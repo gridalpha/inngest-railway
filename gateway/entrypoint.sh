@@ -37,7 +37,7 @@ DASHBOARD_EVENT_KEY="${DASHBOARD_EVENT_KEY%%,*}"
 : "${DASHBOARD_EVENT_KEY:=dev_key}"
 export DASHBOARD_EVENT_KEY
 
-echo "entrypoint: proxying to ${INNGEST_UPSTREAM}, dashboard user ${DASHBOARD_USERNAME}"
+echo "entrypoint: proxying to ${INNGEST_UPSTREAM}, dashboard user ${DASHBOARD_USERNAME}, dashboard sends land on event key ${DASHBOARD_EVENT_KEY%%"${DASHBOARD_EVENT_KEY#????}"}..."
 
 caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
 exec caddy run --config /etc/caddy/Caddyfile --adapter caddyfile
