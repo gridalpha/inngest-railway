@@ -28,6 +28,15 @@ export DASHBOARD_PASSWORD_HASH
 # Keep the plaintext out of the environment Caddy and its children inherit.
 unset DASHBOARD_PASSWORD
 
+# The key the dashboard's Send Event button is rewritten onto. INNGEST_EVENT_KEY
+# may hold a comma-separated list, and only one key can go in a URL path; take
+# the first. With no key configured this stays "dev_key", which makes the
+# rewrite a no-op and leaves stock behaviour in place.
+DASHBOARD_EVENT_KEY="${INNGEST_EVENT_KEY:-}"
+DASHBOARD_EVENT_KEY="${DASHBOARD_EVENT_KEY%%,*}"
+: "${DASHBOARD_EVENT_KEY:=dev_key}"
+export DASHBOARD_EVENT_KEY
+
 echo "entrypoint: proxying to ${INNGEST_UPSTREAM}, dashboard user ${DASHBOARD_USERNAME}"
 
 caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile

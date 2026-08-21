@@ -49,6 +49,21 @@
 		reverse_proxy {$INNGEST_UPSTREAM}
 	}
 
+	# The dashboard's "Send event" button posts to /e/dev_key, a key only the
+	# dev server accepts, so on a real deployment the most prominent control in
+	# the UI answers 401. Rewrite it to a configured key — but only inside this
+	# password-gated block, so the substitution is never made for an anonymous
+	# caller and /e/dev_key stays rejected from the open internet. Whoever holds
+	# the dashboard password can already drive the engine through the UI, so
+	# this grants them nothing they did not have.
+	handle /e/dev_key {
+		basic_auth {
+			{$DASHBOARD_USERNAME} {$DASHBOARD_PASSWORD_HASH}
+		}
+		rewrite * /e/{$DASHBOARD_EVENT_KEY}
+		reverse_proxy {$INNGEST_UPSTREAM}
+	}
+
 	# Everything else reaches a handler that upstream leaves unauthenticated:
 	# the dashboard, /v0/gql and its playground (full read/write over runs and
 	# events), /invoke/{slug} (upstream's own comment there reads "XXX: In OSS
