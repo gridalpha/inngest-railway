@@ -25,7 +25,6 @@
 		path /health
 		path /e/*
 		path /fn/register
-		path /dev
 		path /v1/*
 		path /v0/connect/*
 		path /v0/runs/*
@@ -34,6 +33,19 @@
 		path /v2/*
 	}
 	handle @sdk {
+		reverse_proxy {$INNGEST_UPSTREAM}
+	}
+
+	# /dev is signing-key protected upstream, but the dashboard also calls it for
+	# its feature flags — and a browser sends the basic-auth header, which that
+	# middleware rejects. Route on the credential the caller actually presented:
+	# a bearer token belongs to an SDK and passes through to the key check, and
+	# anything else falls to the basic-auth handler below.
+	@sdk_dev {
+		path /dev
+		header Authorization Bearer*
+	}
+	handle @sdk_dev {
 		reverse_proxy {$INNGEST_UPSTREAM}
 	}
 
