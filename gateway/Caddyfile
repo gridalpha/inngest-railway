@@ -1,0 +1,54 @@
+{
+	admin off
+	# Railway terminates TLS at its edge and speaks plain HTTP to the container.
+	auto_https off
+	servers {
+		trusted_proxies static 100.64.0.0/10 fd00::/8
+	}
+}
+
+:{$PORT:8080} {
+	log
+
+	# This gateway's own liveness. A health check must test its own service:
+	# until the Inngest container exists, inngest.railway.internal does not
+	# resolve at all, so probing the upstream would fail this service's deploy.
+	handle /healthz {
+		respond "ok" 200
+	}
+
+	# Routes Inngest authenticates for itself. /e/{key} carries the event key in
+	# the path; the rest sit behind the signing-key middleware and answer 401
+	# without a valid bearer token. Letting these past the password is what lets
+	# SDKs sync apps, send events and run functions unattended.
+	@sdk {
+		path /health
+		path /e/*
+		path /fn/register
+		path /dev
+		path /v1/*
+		path /v0/connect/*
+		path /v0/runs/*
+		path /v0/telemetry
+		path /api/v2/*
+		path /v2/*
+	}
+	handle @sdk {
+		reverse_proxy {$INNGEST_UPSTREAM}
+	}
+
+	# Everything else reaches a handler that upstream leaves unauthenticated:
+	# the dashboard, /v0/gql and its playground (full read/write over runs and
+	# events), /invoke/{slug} (upstream's own comment there reads "XXX: In OSS
+	# self hosting, check signing keys here"), /debug (pprof) and /metrics.
+	#
+	# HTTP basic auth is the right shape for this half specifically: the browser
+	# replays it on the dashboard's own same-origin XHR, so one rule covers the
+	# UI and the API it calls. A bearer token would reach neither.
+	handle {
+		basic_auth {
+			{$DASHBOARD_USERNAME} {$DASHBOARD_PASSWORD_HASH}
+		}
+		reverse_proxy {$INNGEST_UPSTREAM}
+	}
+}
